@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>keiri inventory — {{.Root}}</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2933;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --row-hover: #f9fafb;
+    --header-bg: #f3f4f6;
+    --good-bg: #e8f5e9; --good-fg: #2e7d32;
+    --miss-bg: #fdecea; --miss-fg: #c62828;
+    --extra-bg: #e3f2fd; --extra-fg: #1565c0;
+    --warn: #d97706; --required: #1e40af;
+    --total-bg: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a; --fg: #e2e8f0; --muted: #94a3b8; --border: #1e293b;
+      --row-hover: #111827; --header-bg: #111827;
+      --good-bg: #14532d33; --good-fg: #86efac;
+      --miss-bg: #7f1d1d4d; --miss-fg: #fca5a5;
+      --extra-bg: #1e3a8a55; --extra-fg: #93c5fd;
+      --warn: #fbbf24; --required: #93c5fd; --total-bg: #1e293b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    margin: 0; padding: 24px 32px; background: var(--bg); color: var(--fg);
+  }
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  h2 { font-size: 14px; margin: 24px 0 8px; font-weight: 600; }
+  .root { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); font-size: 13px; }
+  .gen  { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .summary { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; gap: 6px; align-items: center;
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border);
+  }
+  .pill.ok { background: var(--good-bg); color: var(--good-fg); border-color: transparent; }
+  .pill.warn { background: var(--miss-bg); color: var(--miss-fg); border-color: transparent; }
+  table { border-collapse: collapse; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  th, td { padding: 6px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { background: var(--header-bg); position: sticky; top: 0; font-weight: 600; }
+  th.cat-head, td.cat { text-align: left; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+  tr:hover td { background: var(--row-hover); }
+  td.required { color: var(--required); font-weight: 600; }
+  td.optional { color: var(--muted); }
+  td.cell-good  { background: var(--good-bg);  color: var(--good-fg); }
+  td.cell-miss  { background: var(--miss-bg);  color: var(--miss-fg); font-weight: 600; }
+  td.cell-extra { background: var(--extra-bg); color: var(--extra-fg); }
+  td a, .gaps a { color: inherit; text-decoration: none; }
+  td.cell-miss a { cursor: pointer; }
+  td.cell-miss:hover { filter: brightness(0.95); }
+  td.cell-miss a:hover { text-decoration: underline; }
+  .gaps a:hover { text-decoration: underline; }
+  td.total { background: var(--total-bg); font-weight: 600; }
+  td.empty { color: var(--muted); }
+  .marker { display: inline-block; width: 14px; text-align: center; }
+  .gaps ul { list-style: none; padding: 0; margin: 0; }
+  .gaps li { padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: baseline; }
+  .gaps li:last-child { border-bottom: none; }
+  .gaps .name { flex: 1; }
+  .gaps .miss-tag { color: var(--warn); font-weight: 600; }
+  .gaps .ok-tag { color: var(--good-fg); }
+  .gaps .months { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; color: var(--muted); }
+  legend span.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>keiri inventory</h1>
+  <span class="root">{{.Root}}</span>
+  <span class="gen">generated {{.Generated}} · depth={{.Depth}}</span>
+</header>
+
+<div class="summary">
+  {{range .Summary -}}
+  <span class="pill {{.Class}}">{{.Label}}</span>
+  {{- end}}
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th class="cat-head">category</th>
+      {{range .Months}}<th>{{.}}</th>{{end}}
+      <th>total</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .Rows}}
+    <tr>
+      <td class="cat {{if .Required}}required{{else if .Optional}}optional{{end}}" title="{{.Category}}">
+        <span class="marker">{{.Marker}}</span>{{.Category}}
+      </td>
+      {{range .Cells}}<td class="{{.Class}}">{{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" title="open billing portal">{{.Display}}</a>{{else}}{{.Display}}{{end}}</td>{{end}}
+      <td class="total">{{.Total}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+
+<legend>
+  <span><span class="swatch" style="background:var(--good-bg)"></span>1 file (good)</span>
+  <span><span class="swatch" style="background:var(--extra-bg)"></span>multiple files</span>
+  <span><span class="swatch" style="background:var(--miss-bg)"></span>missing in required</span>
+  <span>★ required · · optional</span>
+</legend>
+
+<div class="gaps">
+  <h2>Gaps (required categories)</h2>
+  <ul>
+    {{range .Gaps}}
+    <li>
+      <span class="name">
+        {{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" title="open billing portal">{{.Category}}</a>{{else}}{{.Category}}{{end}}
+      </span>
+      {{if eq .Status "complete"}}
+        <span class="ok-tag">complete</span>
+      {{else}}
+        {{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" class="miss-tag" title="open billing portal">missing {{len .Missing}}</a>{{else}}<span class="miss-tag">missing {{len .Missing}}</span>{{end}}
+        <span class="months">{{range .Missing}}{{.}} {{end}}</span>
+      {{end}}
+    </li>
+    {{end}}
+  </ul>
+</div>
+</body>
+</html>

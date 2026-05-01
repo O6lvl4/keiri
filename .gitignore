@@ -1,0 +1,10 @@
+/keiri
+/dist/
+/bin/
+*.test
+*.out
+.DS_Store
+.idea/
+.vscode/
+.envrc
+.direnv/
