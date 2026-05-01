@@ -103,10 +103,14 @@ func Render(root string, opts inventory.Options, w io.Writer) error {
 		cells := make([]cell, 0, len(m.Months))
 		for _, mo := range m.Months {
 			n := m.Counts[c][mo]
+			skipped := cfg.Inventory.IsSkipped(c, mo)
 			cl := "empty"
 			disp := "·"
 			cellPortal := ""
 			switch {
+			case skipped && n == 0:
+				cl = "cell-skip"
+				disp = "—"
 			case n == 0 && isReq:
 				cl = "cell-miss"
 				cellPortal = portal
@@ -140,15 +144,23 @@ func Render(root string, opts inventory.Options, w io.Writer) error {
 				if isReq {
 					requiredCount++
 				}
-				if len(gaps) == 0 {
+				// Drop months explicitly skipped via .keiri.yaml.
+				filtered := gaps[:0:0]
+				for _, g := range gaps {
+					if cfg.Inventory.IsSkipped(c, g) {
+						continue
+					}
+					filtered = append(filtered, g)
+				}
+				if len(filtered) == 0 {
 					p.Gaps = append(p.Gaps, gap{Category: c, Status: "complete", Portal: portal})
 					if isReq {
 						completeCount++
 					}
 				} else {
-					p.Gaps = append(p.Gaps, gap{Category: c, Status: "missing", Missing: gaps, Portal: portal})
+					p.Gaps = append(p.Gaps, gap{Category: c, Status: "missing", Missing: filtered, Portal: portal})
 					if isReq {
-						missingTotal += len(gaps)
+						missingTotal += len(filtered)
 					}
 				}
 			}

@@ -16,9 +16,10 @@ import (
 const FileName = ".keiri.yaml"
 
 type Inventory struct {
-	Depth    int      `yaml:"depth"`
-	Required []string `yaml:"required"`
-	Optional []string `yaml:"optional"`
+	Depth    int                 `yaml:"depth"`
+	Required []string            `yaml:"required"`
+	Optional []string            `yaml:"optional"`
+	Skip     map[string][]string `yaml:"skip,omitempty"` // category -> [YYYYMM] months that intentionally have no document
 }
 
 type Config struct {
@@ -104,6 +105,34 @@ func matches(patterns []string, path string) bool {
 		}
 		if path == p || strings.HasPrefix(path, p+"/") {
 			return true
+		}
+	}
+	return false
+}
+
+// IsSkipped reports whether month was explicitly marked "no document
+// expected" for category in the config.
+func (i Inventory) IsSkipped(category, month string) bool {
+	if len(i.Skip) == 0 {
+		return false
+	}
+	if months, ok := i.Skip[category]; ok {
+		for _, m := range months {
+			if m == month {
+				return true
+			}
+		}
+	}
+	for k, months := range i.Skip {
+		if k == "" {
+			continue
+		}
+		if strings.HasPrefix(category, k+"/") {
+			for _, m := range months {
+				if m == month {
+					return true
+				}
+			}
 		}
 	}
 	return false

@@ -81,6 +81,7 @@ go fetch the missing documents in one motion.`,
 			if !recurring {
 				gaps = m.AllMissing(c)
 			}
+			gaps = filterSkipped(gaps, c, cfg)
 			if len(gaps) == 0 {
 				continue
 			}
@@ -138,6 +139,20 @@ go fetch the missing documents in one motion.`,
 		}
 		return nil
 	},
+}
+
+func filterSkipped(gaps []string, category string, cfg *config.Config) []string {
+	if cfg == nil || len(cfg.Inventory.Skip) == 0 {
+		return gaps
+	}
+	out := gaps[:0:0]
+	for _, g := range gaps {
+		if cfg.Inventory.IsSkipped(category, g) {
+			continue
+		}
+		out = append(out, g)
+	}
+	return out
 }
 
 func openPortal(p config.Portal) error {

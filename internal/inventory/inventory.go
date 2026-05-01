@@ -371,6 +371,7 @@ func printGaps(r *result, cfg *config.Config, threshold float64, w io.Writer) {
 		if !recurring {
 			continue
 		}
+		gaps = filterSkipped(gaps, c, cfg)
 		fmt.Fprintf(w, "  %s ", c)
 		if len(gaps) == 0 {
 			dim("(complete)\n")
@@ -386,6 +387,21 @@ func printGaps(r *result, cfg *config.Config, threshold float64, w io.Writer) {
 	if !any && !hasConfig {
 		dim("  (no recurring category has missing months)\n")
 	}
+}
+
+// filterSkipped removes months listed under inventory.skip[category] from gaps.
+func filterSkipped(gaps []string, category string, cfg *config.Config) []string {
+	if cfg == nil || len(cfg.Inventory.Skip) == 0 {
+		return gaps
+	}
+	out := gaps[:0:0]
+	for _, g := range gaps {
+		if cfg.Inventory.IsSkipped(category, g) {
+			continue
+		}
+		out = append(out, g)
+	}
+	return out
 }
 
 func collectAllMissing(matrix map[string]int, months []string) []string {
