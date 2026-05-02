@@ -34,7 +34,7 @@ func expectedLatestMonth() string {
 // Year-month extraction supports several common conventions:
 //   - YYYYMMDD or YYYYMM (e.g. "20240919_...", "20240919-001")
 //   - YYYY-MM[-DD] or YYYY_MM[_DD] (e.g. "amex-2024-09-19.pdf")
-//   - YYYY年MM月 / YYYY年M月 (e.g. "2024年07月Aid-On-Inc請求書.pdf")
+//   - YYYY年MM月 / YYYY年M月 (e.g. "2024年07月_invoice.pdf")
 // Year is constrained to 20XX so 4-digit identifiers like
 // "Receipt-2400-2187" don't get misread as years.
 var rYMPatterns = []*regexp.Regexp{
