@@ -2,136 +2,246 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>keiri inventory — {{.Root}}</title>
 <style>
   :root {
-    --bg: #ffffff;
-    --fg: #1f2933;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --fg: #1c2430;
     --muted: #6b7280;
-    --border: #e5e7eb;
-    --row-hover: #f9fafb;
-    --header-bg: #f3f4f6;
-    --good-bg: #e8f5e9; --good-fg: #2e7d32;
-    --miss-bg: #fdecea; --miss-fg: #c62828;
-    --extra-bg: #e3f2fd; --extra-fg: #1565c0;
-    --warn: #d97706; --required: #1e40af;
-    --total-bg: #f3f4f6;
+    --faint: #b3bac5;
+    --border: #e9ecf1;
+    --row-hover: #f4f8ff;
+    --head-bg: #fbfcfd;
+    --total-bg: #f7f8fa;
+    --good-bg: #e7f6ec; --good-fg: #1a8245;
+    --miss-bg: #fdeceb; --miss-fg: #d23b3b;
+    --extra-bg: #e8f0fe; --extra-fg: #1a64d6;
+    --skip-fg: #c4cad4;
+    --accent: #2563eb;
+    --warn: #c77700;
+    --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 18px rgba(16,24,40,.06);
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.05);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f172a; --fg: #e2e8f0; --muted: #94a3b8; --border: #1e293b;
-      --row-hover: #111827; --header-bg: #111827;
-      --good-bg: #14532d33; --good-fg: #86efac;
-      --miss-bg: #7f1d1d4d; --miss-fg: #fca5a5;
-      --extra-bg: #1e3a8a55; --extra-fg: #93c5fd;
-      --warn: #fbbf24; --required: #93c5fd; --total-bg: #1e293b;
+      --bg: #0b1018; --panel: #131a26; --fg: #e6eaf1; --muted: #93a0b4; --faint: #475063;
+      --border: #212c3c; --row-hover: #172132; --head-bg: #0f1622; --total-bg: #0f1622;
+      --good-bg: #10331f; --good-fg: #7fe3a8;
+      --miss-bg: #3a1414; --miss-fg: #f6a5a5;
+      --extra-bg: #15233f; --extra-fg: #93b8ff;
+      --skip-fg: #3b4659; --accent: #5b8cff; --warn: #fbbf24;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.4);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
     }
   }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    margin: 0; padding: 24px 32px; background: var(--bg); color: var(--fg);
+    margin: 0; padding: 32px 28px 56px; background: var(--bg); color: var(--fg);
+    -webkit-font-smoothing: antialiased;
   }
-  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-  h1 { font-size: 18px; margin: 0; font-weight: 600; }
-  h2 { font-size: 14px; margin: 24px 0 8px; font-weight: 600; }
-  .root { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); font-size: 13px; }
-  .gen  { color: var(--muted); font-size: 12px; margin-left: auto; }
-  .summary { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-  .pill {
-    display: inline-flex; gap: 6px; align-items: center;
-    padding: 4px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border);
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  header.top h1 { font-size: 19px; margin: 0; font-weight: 680; letter-spacing: -.01em; }
+  header.top h1 .dot { color: var(--accent); }
+  header.top .sub { color: var(--muted); font-size: 13px; }
+  header.top .root {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); font-size: 12px;
+    background: var(--panel); border: 1px solid var(--border); padding: 2px 8px; border-radius: 6px;
   }
-  .pill.ok { background: var(--good-bg); color: var(--good-fg); border-color: transparent; }
-  .pill.warn { background: var(--miss-bg); color: var(--miss-fg); border-color: transparent; }
-  table { border-collapse: collapse; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  th, td { padding: 6px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  th { background: var(--header-bg); position: sticky; top: 0; font-weight: 600; }
-  th.cat-head, td.cat { text-align: left; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
-  tr:hover td { background: var(--row-hover); }
-  td.required { color: var(--required); font-weight: 600; }
-  td.optional { color: var(--muted); }
-  td.cell-good  { background: var(--good-bg);  color: var(--good-fg); }
-  td.cell-miss  { background: var(--miss-bg);  color: var(--miss-fg); font-weight: 600; }
-  td.cell-extra { background: var(--extra-bg); color: var(--extra-fg); }
-  td.cell-skip  { background: transparent;     color: var(--muted); font-style: italic; }
+  header.top .gen { color: var(--faint); font-size: 12px; margin-left: auto; }
+
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 11px 16px; min-width: 132px; box-shadow: var(--shadow-sm);
+  }
+  .stat .lbl { font-size: 11px; color: var(--muted); letter-spacing: .03em; }
+  .stat .num { font-size: 15px; font-weight: 650; margin-top: 1px; }
+  .stat.ok .num { color: var(--good-fg); }
+  .stat.warn .num { color: var(--miss-fg); }
+
+  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .arrows { display: inline-flex; gap: 4px; }
+  .arrows button {
+    font: inherit; font-size: 15px; width: 30px; height: 30px; line-height: 1; padding: 0;
+    border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+    border-radius: 8px; cursor: pointer; box-shadow: var(--shadow-sm); transition: .12s;
+  }
+  .arrows button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .arrows button:disabled { opacity: .32; cursor: default; }
+  .ycur { font-weight: 700; font-size: 15px; min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+  .seg {
+    display: inline-flex; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px; gap: 2px; box-shadow: var(--shadow-sm); margin-left: auto;
+  }
+  .seg button {
+    font: inherit; font-size: 12px; font-weight: 560; padding: 5px 12px; border: none;
+    background: transparent; color: var(--muted); border-radius: 7px; cursor: pointer; transition: .12s;
+    font-variant-numeric: tabular-nums;
+  }
+  .seg button:hover { color: var(--fg); }
+  .seg button.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-sm); }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: separate; border-spacing: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; width: 100%; }
+  th, td { padding: 8px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  thead th {
+    background: var(--head-bg); position: sticky; top: 0; z-index: 2; font-weight: 620;
+    color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  th.cat-head, td.cat {
+    text-align: left; position: sticky; left: 0; background: var(--panel); z-index: 1;
+    max-width: 360px; overflow: hidden; text-overflow: ellipsis;
+    box-shadow: 1px 0 0 var(--border);
+  }
+  thead th.cat-head { z-index: 3; background: var(--head-bg); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--row-hover); }
+  tbody tr:hover td.cat { background: var(--row-hover); }
+  td.cat .marker { display: inline-block; width: 16px; color: var(--faint); }
+  td.cat.required { font-weight: 600; }
+  td.cat.required .marker { color: var(--accent); }
+  td.cat.optional { color: var(--muted); }
+
+  td.cell-good  { background: var(--good-bg);  color: var(--good-fg);  font-weight: 600; }
+  td.cell-miss  { background: var(--miss-bg);  color: var(--miss-fg);  font-weight: 700; }
+  td.cell-extra { background: var(--extra-bg); color: var(--extra-fg); font-weight: 700; }
+  td.cell-skip  { color: var(--skip-fg); }
+  td.empty      { color: var(--faint); }
   td a, .gaps a { color: inherit; text-decoration: none; }
-  td.cell-miss a { cursor: pointer; }
-  td.cell-miss:hover { filter: brightness(0.95); }
+  td.cell-miss a { cursor: pointer; display: block; }
+  td.cell-miss:hover { filter: brightness(.96); }
   td.cell-miss a:hover { text-decoration: underline; }
-  .gaps a:hover { text-decoration: underline; }
-  td.total { background: var(--total-bg); font-weight: 600; }
-  td.empty { color: var(--muted); }
-  .marker { display: inline-block; width: 14px; text-align: center; }
+  td.total { background: var(--total-bg); font-weight: 650; color: var(--fg); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 14px 2px 0; font-size: 11px; color: var(--muted); }
+  .legend span.swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+
+  h2 { font-size: 13px; margin: 28px 0 10px; font-weight: 640; color: var(--fg); letter-spacing: -.005em; }
   .gaps ul { list-style: none; padding: 0; margin: 0; }
-  .gaps li { padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: baseline; }
+  .gaps li { padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: baseline; }
   .gaps li:last-child { border-bottom: none; }
   .gaps .name { flex: 1; }
-  .gaps .miss-tag { color: var(--warn); font-weight: 600; }
-  .gaps .ok-tag { color: var(--good-fg); }
+  .gaps .tag { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
+  .gaps .miss-tag { color: var(--miss-fg); background: var(--miss-bg); }
+  .gaps .ok-tag { color: var(--good-fg); background: var(--good-bg); }
   .gaps .months { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
-  legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; color: var(--muted); }
-  legend span.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>keiri inventory</h1>
+<div class="wrap">
+
+<header class="top">
+  <h1>keiri<span class="dot"> · </span><span class="sub">inventory</span></h1>
   <span class="root">{{.Root}}</span>
   <span class="gen">generated {{.Generated}} · depth={{.Depth}}</span>
 </header>
 
-<div class="summary">
+<div class="stats">
   {{range .Summary -}}
-  <span class="pill {{.Class}}">{{.Label}}</span>
+  <div class="stat {{.Class}}"><div class="num">{{.Label}}</div></div>
   {{- end}}
 </div>
 
-<table>
-  <thead>
-    <tr>
-      <th class="cat-head">category</th>
-      {{range .Months}}<th>{{.}}</th>{{end}}
-      <th>total</th>
-    </tr>
-  </thead>
-  <tbody>
-  {{range .Rows}}
-    <tr>
-      <td class="cat {{if .Required}}required{{else if .Optional}}optional{{end}}" title="{{.Category}}">
-        <span class="marker">{{.Marker}}</span>{{.Category}}
-      </td>
-      {{range .Cells}}<td class="{{.Class}}">{{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" title="open billing portal">{{.Display}}</a>{{else}}{{.Display}}{{end}}</td>{{end}}
-      <td class="total">{{.Total}}</td>
-    </tr>
-  {{end}}
-  </tbody>
-</table>
+<div class="toolbar">
+  <div class="arrows">
+    <button id="yprev" title="前の年">‹</button>
+    <button id="ynext" title="次の年">›</button>
+  </div>
+  <span class="ycur" id="ycur"></span>
+  <div class="seg" id="yseg">
+    <button class="ytab" data-year="all">All</button>
+    {{range .Years}}<button class="ytab" data-year="{{.}}">{{.}}</button>{{end}}
+  </div>
+</div>
 
-<legend>
-  <span><span class="swatch" style="background:var(--good-bg)"></span>1 file (good)</span>
-  <span><span class="swatch" style="background:var(--extra-bg)"></span>multiple files</span>
-  <span><span class="swatch" style="background:var(--miss-bg)"></span>missing in required</span>
-  <span>★ required · · optional</span>
-</legend>
+<div class="card">
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="cat-head">category</th>
+          {{range .Months}}<th data-year="{{slice . 0 4}}">{{.}}</th>{{end}}
+          <th>total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Rows}}
+        <tr>
+          <td class="cat {{if .Required}}required{{else if .Optional}}optional{{end}}" title="{{.Category}}">
+            <span class="marker">{{.Marker}}</span>{{.Category}}
+          </td>
+          {{range .Cells}}<td class="{{.Class}}" data-year="{{.Year}}">{{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" title="open billing portal">{{.Display}}</a>{{else}}{{.Display}}{{end}}</td>{{end}}
+          <td class="total">{{.Total}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="swatch" style="background:var(--good-bg)"></span>1 file</span>
+  <span><span class="swatch" style="background:var(--extra-bg)"></span>multiple</span>
+  <span><span class="swatch" style="background:var(--miss-bg)"></span>missing (required)</span>
+  <span>★ required · · optional · — skipped</span>
+</div>
 
 <div class="gaps">
-  <h2>Gaps (required categories)</h2>
-  <ul>
-    {{range .Gaps}}
-    <li>
-      <span class="name">
-        {{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" title="open billing portal">{{.Category}}</a>{{else}}{{.Category}}{{end}}
-      </span>
-      {{if eq .Status "complete"}}
-        <span class="ok-tag">complete</span>
-      {{else}}
-        {{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" class="miss-tag" title="open billing portal">missing {{len .Missing}}</a>{{else}}<span class="miss-tag">missing {{len .Missing}}</span>{{end}}
-        <span class="months">{{range .Missing}}{{.}} {{end}}</span>
+  <h2>Gaps · required categories</h2>
+  <div class="card">
+    <ul>
+      {{range .Gaps}}
+      <li>
+        <span class="name">
+          {{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" title="open billing portal">{{.Category}}</a>{{else}}{{.Category}}{{end}}
+        </span>
+        {{if eq .Status "complete"}}
+          <span class="tag ok-tag">complete</span>
+        {{else}}
+          {{if .Portal}}<a href="{{.Portal}}" target="_blank" rel="noopener" class="tag miss-tag" title="open billing portal">missing {{len .Missing}}</a>{{else}}<span class="tag miss-tag">missing {{len .Missing}}</span>{{end}}
+          <span class="months">{{range .Missing}}{{.}} {{end}}</span>
+        {{end}}
+      </li>
       {{end}}
-    </li>
-    {{end}}
-  </ul>
+    </ul>
+  </div>
 </div>
+
+</div>
+
+<script>
+(function () {
+  var years = [{{range $i, $y := .Years}}{{if $i}},{{end}}"{{$y}}"{{end}}];
+  var cur = years.length ? years[years.length - 1] : "all";
+  function apply(y) {
+    cur = y;
+    document.querySelectorAll('th[data-year], td[data-year]').forEach(function (el) {
+      el.style.display = (y === "all" || el.getAttribute('data-year') === y) ? "" : "none";
+    });
+    var lbl = document.getElementById('ycur');
+    if (lbl) lbl.textContent = (y === "all" ? "全期間" : y);
+    document.querySelectorAll('.ytab').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-year') === y);
+    });
+    var i = years.indexOf(y);
+    var pv = document.getElementById('yprev'), nx = document.getElementById('ynext');
+    if (pv) pv.disabled = (y === "all" || i <= 0);
+    if (nx) nx.disabled = (y === "all" || i < 0 || i >= years.length - 1);
+  }
+  document.querySelectorAll('.ytab').forEach(function (b) {
+    b.addEventListener('click', function () { apply(b.getAttribute('data-year')); });
+  });
+  var yp = document.getElementById('yprev'), yn = document.getElementById('ynext');
+  if (yp) yp.addEventListener('click', function () { var i = years.indexOf(cur); if (i > 0) apply(years[i - 1]); });
+  if (yn) yn.addEventListener('click', function () { var i = years.indexOf(cur); if (i >= 0 && i < years.length - 1) apply(years[i + 1]); });
+  apply(cur);
+})();
+</script>
 </body>
 </html>

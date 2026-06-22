@@ -21,6 +21,7 @@ type cell struct {
 	Display string
 	Class   string
 	Portal  string // URL set on missing cells when a portal is configured
+	Year    string // YYYY of this column's month (for year filtering in the viewer)
 }
 
 type row struct {
@@ -50,9 +51,18 @@ type page struct {
 	Generated string
 	Depth     int
 	Months    []string
+	Years     []string // distinct YYYY across Months, ascending (for the year navigator)
 	Rows      []row
 	Gaps      []gap
 	Summary   []pill
+}
+
+// yearOf returns the YYYY part of a YYYYMM month string ("" if too short).
+func yearOf(month string) string {
+	if len(month) >= 4 {
+		return month[:4]
+	}
+	return month
 }
 
 // Render writes an HTML report to w.
@@ -81,6 +91,14 @@ func Render(root string, opts inventory.Options, w io.Writer) error {
 		Generated: time.Now().Format("2006-01-02 15:04"),
 		Depth:     opts.Depth,
 		Months:    m.Months,
+	}
+
+	seenYear := map[string]bool{}
+	for _, mo := range m.Months {
+		if y := yearOf(mo); !seenYear[y] {
+			seenYear[y] = true
+			p.Years = append(p.Years, y)
+		}
 	}
 
 	requiredCount := 0
@@ -121,7 +139,7 @@ func Render(root string, opts inventory.Options, w io.Writer) error {
 				cl = "cell-extra"
 				disp = fmt.Sprintf("%d", n)
 			}
-			cells = append(cells, cell{Display: disp, Class: cl, Portal: cellPortal})
+			cells = append(cells, cell{Display: disp, Class: cl, Portal: cellPortal, Year: yearOf(mo)})
 		}
 
 		p.Rows = append(p.Rows, row{
