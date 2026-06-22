@@ -10,10 +10,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/text/unicode/norm"
 	"gopkg.in/yaml.v3"
 )
 
 const FileName = ".keiri.yaml"
+
+// nfc normalizes a string to Unicode NFC. macOS / Google Drive store
+// filenames decomposed (NFD), while .keiri.yaml keys are typically NFC,
+// so category↔config comparisons must normalize both sides first — else
+// names with dakuten (e.g. "クレジットカード") silently fail to match.
+func nfc(s string) string { return norm.NFC.String(s) }
 
 type Inventory struct {
 	Depth    int                 `yaml:"depth"`
@@ -98,8 +105,9 @@ func (i Inventory) Classify(path string) string {
 }
 
 func matches(patterns []string, path string) bool {
+	path = nfc(path)
 	for _, p := range patterns {
-		p = strings.TrimSpace(p)
+		p = nfc(strings.TrimSpace(p))
 		if p == "" {
 			continue
 		}
@@ -116,18 +124,13 @@ func (i Inventory) IsSkipped(category, month string) bool {
 	if len(i.Skip) == 0 {
 		return false
 	}
-	if months, ok := i.Skip[category]; ok {
-		for _, m := range months {
-			if m == month {
-				return true
-			}
-		}
-	}
+	category = nfc(category)
 	for k, months := range i.Skip {
-		if k == "" {
+		nk := nfc(k)
+		if nk == "" {
 			continue
 		}
-		if strings.HasPrefix(category, k+"/") {
+		if category == nk || strings.HasPrefix(category, nk+"/") {
 			for _, m := range months {
 				if m == month {
 					return true
@@ -144,11 +147,10 @@ func (c *Config) PortalFor(category string) Portal {
 	if c == nil || c.Portals == nil {
 		return Portal{}
 	}
-	if p, ok := c.Portals[category]; ok {
-		return p
-	}
+	category = nfc(category)
 	for k, v := range c.Portals {
-		if k != "" && (category == k || strings.HasPrefix(category, k+"/")) {
+		nk := nfc(k)
+		if nk != "" && (category == nk || strings.HasPrefix(category, nk+"/")) {
 			return v
 		}
 	}
